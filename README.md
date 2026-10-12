@@ -137,7 +137,15 @@ Overpass client is included.
 
 ## Data sources and attribution
 
-The saved OSM input contains Overpass generator and base-timestamp metadata, and the pipeline carries source type, source filename, retrieval date when present, and OSM attribution/license information into its outputs. GreenMiles makes no live OSM downloads in this phase. OpenStreetMap data is available under the Open Database License (ODbL); any use or redistribution must follow the [OpenStreetMap copyright and license requirements](https://www.openstreetmap.org/copyright), including appropriate attribution such as “© OpenStreetMap contributors” and applicable ODbL obligations. Review the OSM terms for the specific use and derived outputs before release.
+The real test fixture at `data/raw/osm/sample_manesar.json` contains OpenStreetMap
+data from an Overpass export. Its embedded metadata retains the Overpass generator,
+OSM base timestamp, and upstream ODbL notice. Attribute the data to “© OpenStreetMap
+contributors” and follow the [OpenStreetMap copyright and license requirements](https://www.openstreetmap.org/copyright), including applicable ODbL obligations
+when redistributing the fixture or derived databases. This ODbL data notice applies
+to the OSM data, not to GreenMiles source code; the repository does not currently
+declare a project code license. The ingestion pipeline carries source type, source
+filename, retrieval date when present, and attribution/license information into
+its outputs. GreenMiles makes no live OSM downloads in this phase.
 
 ## Contributing
 
