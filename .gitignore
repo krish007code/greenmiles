@@ -1,47 +1,20 @@
 # Python-generated files
 __pycache__/
-*.py[cod]
+*.py[oc]
 build/
 dist/
 wheels/
-*.egg-info/
+*.egg-info
 
 # Virtual environments
-.venv/
-venv/
+.venv
 
-# Secrets and environment files
-.env
-.env.*
-!.env.example
+# Reproducible processed OSM outputs are generated locally and are not committed.
+/data/processed/osm/*.geojson
+/data/processed/osm/*.metadata.json
+/utility/logs/greenmiles.log*
 
-# Logs
-*.log
-*.log.*
-utility/logs/
-logs/
 
-# Local databases
-*.duckdb
-*.duckdb.wal
-*.db
-*.sqlite
-*.sqlite3
 
-# Generated datasets
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
 
-# Test and tooling caches
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-.coverage
-htmlcov/
 
-# IDE and operating system
-.vscode/
-.idea/
-.DS_Store

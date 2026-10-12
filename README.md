@@ -1,6 +1,6 @@
 # GreenMiles
 
-GreenMiles is an early-stage, nature-first running route recommendation project. Its goal is to help runners find routes that fit their available time while giving priority to greener surroundings. The repository is currently a Phase 0 foundation; route recommendations are not implemented yet.
+GreenMiles is an early-stage, nature-first running route recommendation project. Its goal is to help runners find routes that fit their available time while giving priority to greener surroundings. Phase 1 provides an offline-first OpenStreetMap (OSM) JSON ingestion and GeoJSON normalization pipeline; route recommendations are not implemented yet.
 
 ## Problem
 
@@ -8,13 +8,13 @@ Runners often have a limited window for a run and may prefer a route with more t
 
 ## Current status
 
-Phase 0 currently provides application configuration, `.env` environment-variable support, console and rotating file logging, Pydantic validation, and basic tests for configuration and logging. Routing settings exist as configuration values only. There is no route generation, map interface, AI feature, or KML export in the current code.
+The project provides application configuration, `.env` environment-variable support, console and rotating file logging, Pydantic validation, and an offline-first OSM JSON-to-GeoJSON pipeline with tests. Routing settings exist as configuration values only. There is no route generation, map interface, AI feature, or KML export in the current code.
 
 ## Roadmap
 
 Planned work, subject to design and contributor interest:
 
-1. Ingest geographic data, beginning with OpenStreetMap.
+1. Extend geographic data ingestion beyond saved OSM exports.
 2. Define analytical data models and add data-quality checks.
 3. Generate and rank routes using runner constraints and nature-oriented criteria.
 4. Export generated routes as KML.
@@ -25,7 +25,7 @@ These are future goals, not available features. Technologies for them have not b
 
 ## Tech stack
 
-**Current implementation:** Python 3.14+, `uv` for environment and dependency management, Pydantic for configuration validation, python-dotenv for loading local environment variables, and Loguru for logging. Development dependencies are pytest and Ruff; the project is built with `uv_build`.
+**Current implementation:** Python 3.14+, `uv` for environment and dependency management, Pydantic for configuration validation, python-dotenv for loading local environment variables, and Loguru for logging. The OSM ingestion uses the Python standard library for JSON parsing, coordinate validation, and GeoJSON serialization; it adds no geospatial runtime dependency. Development dependencies are pytest and Ruff; the project is built with `uv_build`.
 
 **Planned:** OpenStreetMap as a geographic data source, with the route, KML, optional local AI, and web technologies to be determined as those phases are designed.
 
@@ -45,7 +45,7 @@ cd greenmiles
 uv sync --dev
 ```
 
-`uv sync --dev` reads `pyproject.toml` and `uv.lock`, creates or updates the project environment, installs the project, and includes the `dev` group. The project defines a `greenmiles` console-script entry point, but the current `main()` only prints a greeting; it does not run route recommendations.
+`uv sync --dev` reads `pyproject.toml` and `uv.lock`, creates or updates the project environment, installs the project, and includes the `dev` group. The project defines a `greenmiles` console-script entry point, but route recommendations are not implemented. Run local OSM ingestion with the module command below.
 
 ## Configuration
 
@@ -72,12 +72,59 @@ uv run ruff format --check .
 
 The final command checks formatting without modifying files.
 
+## Offline OSM ingestion (Phase 1)
+
+The pipeline reads an existing Overpass/OSM JSON export from disk and does not
+make network requests. The saved input fixture is
+`data/raw/osm/sample_manesar.json`; it contains 42 OSM ways (41 tagged with
+`highway` and one tagged `leisure=park`). The importer itself does not download
+this file. If you replace it with a different real export, keep that raw file
+under `data/raw/osm/` and run:
+
+```sh
+uv run python -m greenmiles.ingest_osm
+```
+
+To select different paths, pass `--input path/to/export.json` and
+`--output path/to/output.geojson`. The defaults write
+`data/processed/osm/sample_manesar.geojson` and its companion
+`data/processed/osm/sample_manesar.metadata.json`. Processed outputs are locally
+generated and ignored by Git. A valid input with no elements produces an empty
+FeatureCollection and `processing_outcome: "empty"`; unsupported or incomplete
+geometries are listed in metadata and produce a `partial` outcome rather than
+being assigned invented coordinates. Duplicate elements are identified by
+`(OSM type, OSM ID)`; the first copy is retained.
+
+Feature categories are determined solely from OSM tags: `highway=footway`,
+`path`, or `pedestrian` maps to `pedestrian_path`; `highway=residential`,
+`service`, `living_street`, or `unclassified` maps to `road`; any other
+`highway` value maps to `other_highway`; and features tagged with `leisure`,
+`landuse`, or `natural` are categorized as `green_space` when no highway
+category applies. When a highway feature also has a green-space tag, its
+category is suffixed with `_and_green_space` (for example,
+`pedestrian_path_and_green_space`). These labels describe source tags only;
+they do not establish public access, pedestrian access, or running suitability.
+
+Coordinates are serialized in GeoJSON longitude/latitude order and remain in
+WGS84 (EPSG:4326); no projection is performed. Ways with valid coordinate
+arrays become LineStrings, except closed green-space rings, which become
+Polygons. OSM nodes with `lat`/`lon` become Points. Relation geometry is handled
+when supplied as a direct coordinate array; member-assembled/multipolygon
+relation structures are not assembled in this phase and are reported as
+unsupported geometry.
+
+The library boundary accepts decoded OSM documents independently of the local
+file reader, allowing a future Overpass adapter to feed the same normalization
+without putting network behavior in the offline pipeline or tests. No live
+Overpass client is included.
+
 ## Project structure
 
 | Path | Purpose |
 | --- | --- |
 | `src/greenmiles/` | Installable Python package and application entry point. |
 | `src/greenmiles/config.py` | INI loading, environment overrides, and validated configuration models. |
+| `src/greenmiles/ingest_osm.py` | Offline OSM JSON reader, shared normalization, GeoJSON output, metadata, and module entry point. |
 | `src/greenmiles/utility/custom_logger.py` | Console and rotating file logger setup. |
 | `tests/` | Configuration and logger tests. |
 | `config/app.ini` | Application, logging, and placeholder routing defaults. |
@@ -90,7 +137,7 @@ The final command checks formatting without modifying files.
 
 ## Data sources and attribution
 
-OpenStreetMap is a **planned** data source and is not integrated yet. When OSM data is added, the implementation and any distribution of derived data must follow the [OpenStreetMap copyright and license requirements](https://www.openstreetmap.org/copyright), including appropriate attribution (for example, “© OpenStreetMap contributors”) and applicable Open Database License (ODbL) obligations. Review the OSM terms for the specific data use and outputs before release.
+The saved OSM input contains Overpass generator and base-timestamp metadata, and the pipeline carries source type, source filename, retrieval date when present, and OSM attribution/license information into its outputs. GreenMiles makes no live OSM downloads in this phase. OpenStreetMap data is available under the Open Database License (ODbL); any use or redistribution must follow the [OpenStreetMap copyright and license requirements](https://www.openstreetmap.org/copyright), including appropriate attribution such as “© OpenStreetMap contributors” and applicable ODbL obligations. Review the OSM terms for the specific use and derived outputs before release.
 
 ## Contributing
 
